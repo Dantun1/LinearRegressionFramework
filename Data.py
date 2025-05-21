@@ -1,0 +1,6 @@
+class Dataset:
+    #TODO: Implement as a dataclass with validation etc for inputted features
+    ...
+
+class DataValidation():
+    ...
