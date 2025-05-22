@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 import numpy as np
-from Data import Dataset, DataValidation
+from Data import LinearRegressionDataset, DataValidation
 
 class Model(ABC):
     @abstractmethod
