@@ -1,19 +1,26 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, InitVar, field
 import numpy as np
 import pandas as pd
+from functools import singledispatchmethod
 from typing import Union
 
 @dataclass
 class LinearRegressionDataset:
     """
-    A dataclass for linear regression datasets that holds the features and response
+    A dataclass for linear regression datasets that processes and stores the features and response data.
 
     Args:
-        _features: A numpy array, pandas DataFrame or pandas Series of features - standardized to a 2D array or DataFrame post init.
-        _response: A numpy array, pandas DataFrame or pandas Series of response - standardized to a 1D array or Series post init.
+        features_input: The unvalidated features input
+        response_input: The unvalidated response input
+
+    Attributes:
+        _features: A validated 2D numpy array or pandas DataFrame of features.
+        _response: A validated 1D numpy array or pandas Series of responses.
     """
-    _features: Union[np.ndarray,pd.DataFrame,pd.Series]
-    _response: Union[np.ndarray,pd.DataFrame, pd.Series]
+    features_input: InitVar[Union[np.ndarray, pd.DataFrame, pd.Series]]
+    response_input: InitVar[Union[np.ndarray, pd.DataFrame, pd.Series]]
+    _features: np.ndarray | pd.DataFrame = field(init=False, repr=False)
+    _response: np.ndarray | pd.Series = field(init=False, repr=False)
 
     @property
     def features(self):
@@ -23,63 +30,71 @@ class LinearRegressionDataset:
     def response(self):
         return self._response
 
-    def __post_init__(self):
+
+    def __post_init__(self, features_input, response_input):
         """
         Validates the dataset by ensuring
         1) features and response are numpy arrays, pandas dataframes or series with real number types.
         2) features and response have the same length
         """
-        self._validate_and_standardize_features()
-        self._validate_and_standardize_response()
+        self._features = self._process_features(features_input)
+        self._response = self._process_response(response_input)
 
-        if len(self._features) != len(self._response):
+        if len(self.features) != len(self.response):
             raise ValueError("Features and response must have the same length")
 
+    @singledispatchmethod
+    def _process_features(self, features):
+        # Reject invalid feature input types
+        raise TypeError(f"Unsupported features type {type(features)}.\nFeatures must be a numpy array, pandas dataframe or pandas series.")
 
-    def _validate_and_standardize_features(self ):
-        # Reject invalid input types
-        if not isinstance(self._features, (np.ndarray, pd.DataFrame, pd.Series)):
-            raise TypeError("Features must be a numpy array, pandas dataframe or pandas series")
+    @_process_features.register(pd.DataFrame)
+    def _(self, df):
+        self._validate_real_types(df)
+        return df
 
-        # Reject all numpy arrays with more than 2 dimensions
-        if isinstance(self._features, np.ndarray) and self._features.ndim > 2:
-            raise ValueError("Features must be a 1D or 2D numpy array, pandas dataframe or pandas series")
+    @_process_features.register(pd.Series)
+    def _(self, s):
+        self._validate_real_types(s)
+        # Standardize pd.Series to dataframe
+        return pd.Series.to_frame(s)
 
-        # Standardize pandas series to dataframe
-        if isinstance(self._features, pd.Series):
-            self._features = self._features.to_frame()
+    @_process_features.register(np.ndarray)
+    def _(self, np_features):
+        # Reject invalid np arrays and standardize 1D numpy arrays to (n,1) matrix
+        if np_features.ndim > 2:
+            raise ValueError("Features as np array must have 1 or 2 dimensions.")
+        elif np_features.ndim == 1:
+            np_features = np_features.reshape(-1, 1)
+        self._validate_real_types(np_features)
+        return np_features
 
-        # Standardize (n,) numpy arrays to (n,1) matrix
-        if isinstance(self._features, np.ndarray) and self._features.ndim == 1:
-            self._features = self._features.reshape(-1, 1) # Standardize vectors to single column matrix
+    @singledispatchmethod
+    def _process_response(self, response):
+        raise TypeError(f"Unsupported response type {type(response)}. Response must be a 1D numpy array, single-column pandas dataframe or pandas series")
 
+    @_process_response.register(pd.DataFrame)
+    def _(self, df):
+        if df.shape[1] > 1:
+            raise ValueError("Response dataframe must have 1 column.")
+        self._validate_real_types(df)
+        return df.squeeze()
 
-        self._validate_real_types(self._features)
+    @_process_response.register(np.ndarray)
+    def _(self, np_response):
 
-    def _validate_and_standardize_response(self):
-        valid_response_message = "Response must be a 1D numpy array, single-column pandas dataframe or pandas series"
+        # Reject all numpy arrays with more than 2 dimensions or 2-dimensional vectors with more than 1 column. Squeeze 2D with single column.
+        if np_response.ndim > 2 or (np_response.ndim == 2 and np_response.shape[1] != 1):
+            raise ValueError("Response array must be 1D numpy array or single-column 2D np array")
+        elif np_response.ndim == 2:
+            np_response = np.squeeze(np_response)
+        self._validate_real_types(np_response)
+        return np_response
 
-        # Reject invalid input types
-        if not isinstance(self._response, (np.ndarray, pd.DataFrame, pd.Series)):
-            raise TypeError("Response must be a numpy array, pandas dataframe or pandas series")
-
-        # Reject all numpy arrays with more than 2 dimensions or 2-dimensional vectors with more than 1 column
-        if isinstance(self._response, np.ndarray) and (self._response.ndim >2 or (self._response.ndim == 2 and self._response.shape[1] != 1)) :
-            raise ValueError(valid_response_message)
-        # Reject pandas dataframes with more than 1 column
-        if isinstance(self._response, pd.DataFrame) and self._features.shape[1] > 1:
-            raise ValueError(valid_response_message)
-
-        # Standardize pandas dataframes to series
-        if isinstance(self._response, pd.DataFrame):
-            self._response = self._response.squeeze()
-
-        # Standardize (n,1) numpy arrays to 1d vector
-        if isinstance(self._response, np.ndarray) and self._response.ndim == 2:
-            self._response = self._response.squeeze()
-
-
-        self._validate_real_types(self._response)
+    @_process_response.register(pd.Series)
+    def _(self, s):
+        self._validate_real_types(s)
+        return s
 
     @staticmethod
     def _validate_real_types(data):
@@ -97,10 +112,8 @@ class LinearRegressionDataset:
     def __str__(self):
         return f"LinearRegressionDataset with dimensions-> Features: {self._features.shape}, Response: {self._response.shape}"
 
-    # def __repr__(self):
-    #     return f"{self.__class__.__name__}(features={self._features.shape}, response={self._response.shape})"
-
-    #TODO: Handle Nans
+    #TODO: Handle Nans, if provided with Nans, remove by default unless specified in constructor.
+    #TODO: Add names variable to store column names if provided
 
 
 
@@ -110,6 +123,5 @@ class DataValidation():
 
 if __name__ == "__main__":
     x= np.random.rand(5) * 10
-    y = pd.Series(np.random.rand(5) * 10)
+    y = pd.DataFrame(data= {'col1': [50,20,30,49,10]})
     dataset = LinearRegressionDataset(x, y)
-    print(dataset.response)
