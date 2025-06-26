@@ -3,6 +3,11 @@ import numpy as np
 import pandas as pd
 from functools import singledispatchmethod
 from typing import Union
+import logging
+from LinReg import add_module_handler
+
+logger = logging.getLogger(__name__)
+add_module_handler(logger)
 
 @dataclass
 class LinearRegressionDataset:
@@ -125,3 +130,4 @@ if __name__ == "__main__":
     x= np.random.rand(5) * 10
     y = pd.DataFrame(data= {'col1': [50,20,30,49,10]})
     dataset = LinearRegressionDataset(x, y)
+    func2()

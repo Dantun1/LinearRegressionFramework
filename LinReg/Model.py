@@ -1,7 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 import numpy as np
-from Data import LinearRegressionDataset, DataValidation
+import logging
+from LinReg import add_module_handler
+
+logger = logging.getLogger(__name__)
+add_module_handler(logger)
+
 
 class Model(ABC):
     @abstractmethod
@@ -107,6 +112,7 @@ class SimpleLinearRegression(Model, LinearRegressionMixin):
     def __str__(self):
         message = ""
         if not self.is_fitted:
+            logger.error("Tried to print without training model")
             message += "Model is not fitted yet, call .train() first"
         else:
             if self._slope >= 0:
@@ -124,5 +130,4 @@ if __name__ == "__main__":
     model = SimpleLinearRegression(x, y)
     print(model)
     model.train()
-    print(model)
 
