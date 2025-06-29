@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 import numpy as np
 import logging
-from LinReg import add_module_handler
+from stats_framework.linear_regression import add_module_handler
 
 logger = logging.getLogger(__name__)
 add_module_handler(logger)
