@@ -1,4 +1,4 @@
-from linear_regression.model import LinearRegression
-from base_model import Model
+from stats_framework.models.linear_regression.model import LinearRegression
+from stats_framework.models.base_model import BaseModel
 
-__all__ = ["Model", "LinearRegression"]
+__all__ = ["BaseModel", "LinearRegression"]

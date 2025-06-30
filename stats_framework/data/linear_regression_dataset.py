@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from functools import singledispatchmethod
 from typing import Union
-from base_dataset import BaseDataset
+from stats_framework.data.base_dataset import BaseDataset
 
 @dataclass
 class LinearRegressionDataset(BaseDataset):
