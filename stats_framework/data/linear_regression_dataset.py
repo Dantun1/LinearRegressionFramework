@@ -3,13 +3,10 @@ import numpy as np
 import pandas as pd
 from functools import singledispatchmethod
 from typing import Union
-import logging
-
-logging.basicConfig(level=logging.INFO)
-
+from base_dataset import BaseDataset
 
 @dataclass
-class LinearRegressionDataset:
+class LinearRegressionDataset(BaseDataset):
     """
     A dataclass for linear regression datasets that processes and stores the features and response data.
 
